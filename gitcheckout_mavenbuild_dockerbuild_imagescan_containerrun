@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+
+    tools {
+        maven "M3"
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/Jathin-Sagar/task3.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true clean package"
+            }
+        }
+        stage('Docker Build') {
+            steps {
+                script {
+                    sh 'docker build -t springappimagaug24 -f Dockerfile .'
+                }
+            }
+        }
+        stage('Image Scan') {
+            steps {
+                script {
+                    // Install Trivy (assuming it's available in the PATH)
+                    sh 'trivy --version'
+
+                    // Scan the Docker image with Trivy
+                    sh 'trivy image springappimagaug24'
+                }
+            }
+        }
+        stage('Run Container') {
+            steps {
+                script {
+                    sh 'docker run -d -p 8080:8080 --name springappcontainer7 springappimagaug24'
+                }
+            }
+        }
+    }
+}
+

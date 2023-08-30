@@ -1,0 +1,74 @@
+pipeline {
+    agent any
+
+    tools {
+        maven "M3"
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/Jathin-Sagar/task3.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true clean package"
+            }
+        }
+        stage('Docker Build') {
+            steps {
+                script {
+                    sh 'docker build -t springappimagaug24 -f Dockerfile .'
+                }
+            }
+        }
+        stage('Image Scan') {
+            steps {
+                script {
+                    // Install Trivy (assuming it's available in the PATH)
+                    sh 'trivy --version'
+
+                    // Scan the Docker image with Trivy
+                    sh 'trivy image springappimagaug24'
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Log in to Docker Hub using secure password input
+                    sh 'echo "Kawasakininja@123" | docker login -u "jathin.seerla@isowhiz.in" --password-stdin'
+                    
+                    // Tag the image for Docker Hub
+                    sh 'docker tag springappimagaug24:latest seerlajathin/springappimagaug24:latest'
+                    
+                    // Push the image to Docker Hub
+                    sh 'docker push seerlajathin/springappimagaug24:latest'
+                    
+                    // Log out from Docker Hub
+                    sh 'docker logout'
+                }
+            }
+        }
+        stage('Run Container') {
+            steps {
+                script {
+                    def containerName = 'springappcontainer3'
+                    def existingContainer = sh(script: "docker ps -aqf name=${containerName}", returnStdout: true).trim()
+
+                    // Check if a container with the specified name already exists
+                    if (existingContainer) {
+                        echo "Stopping and removing existing container: $existingContainer"
+                        sh "docker stop $existingContainer"
+                        sh "docker rm $existingContainer"
+                    }
+
+                    // Run the Docker container
+                    sh "docker run -d -p 8080:8080 --name $containerName seerlajathin/springappimagaug24:latest"
+                }
+            }
+        }
+    }
+}
+
